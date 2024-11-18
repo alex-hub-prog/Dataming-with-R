@@ -1,0 +1,352 @@
+---
+title: 'Individual Assignment 2: Logistic Regression Analysis'
+author: "Alexandre"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document:
+    theme: united
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+
+
+### 1. Data Preparation.
+
+
+(a). Loading data
+```{r}
+# loading libraries
+library(ggplot2)
+library(dplyr)
+
+# loading  data
+data <- read.csv("heart.csv")
+
+# Display the first few rows of the selected data
+head(data)
+```
+* Answer: The variables and their descriptions are: 
+
+
+1. age : Age of the individual in years. 
+2. sex : Gender of the individual (1 = male, 0 = female).
+3. cp :  Chest pain type (0-3).
+4. trestbps : Resting blood pressure (in mm Hg).
+5. chol : Serum cholesterol in mg/dl.
+6. fbs : Fasting blood sugar > 120 mg/dl (1 = true, 0 = false).
+7. restecg : Resting electrocardiographic results (0-2).
+8. thalach : Maximum heart rate achieved.
+9. exang : Exercise induced angina (1 = yes, 0 = no).
+10. oldpeak : ST depression induced by exercise relative to rest.
+11. slope : Slope of the peak exercise ST segment (0-2).
+12. ca  : Number of major vessels (0-3) colored by fluoroscopy.
+13. thal : Thalassemia (1 = normal, 2 = fixed defect, 3 = reversible defect).
+14. target : Diagnosis of heart disease (1 = presence, 0 = absence).
+
+
+(b). Variable Selection:
+
+```{r}
+# Select the relevant variables for analysis
+selected_data <- data %>%
+  select(target, age, sex, cp, chol)
+
+# Display the first few rows of the selected data
+head(selected_data)
+
+```
+
+### 2. Data Cleaning
+
+```{r}
+
+selected_data <- na.omit(selected_data) # Remove rows with missing values
+
+
+
+# Check if cp exists: This form is used because we had an unknown error with the standard 
+if ("cp" %in% colnames(selected_data)) {
+    # Convert cp to factor
+    selected_data$cp <- as.factor(selected_data$cp)
+} else {
+    print("Variable 'cp' not found in the dataset.")
+}
+# Check if sex exists
+if ("sex" %in% colnames(selected_data)) {
+    # Convert sex to factor
+    selected_data$sex <- as.factor(selected_data$sex)
+} else {
+    print("Variable 'sex' not found in the dataset.")
+}
+
+
+
+head(selected_data)
+
+
+```
+
+
+```{r}
+#check the summary of the cleaned dataset
+summary(selected_data)
+```
+
+```{r}
+# Check for duplicated records
+duplicates <- selected_data[duplicated(selected_data), ]
+#print(duplicates)
+# Display the duplicated records, if any
+if (nrow(duplicates) > 0) {
+    print("Duplicated records found:")
+    #print(duplicates)
+} else {
+    print("No duplicated records found.")
+}
+
+
+#summary(selected_data)
+#head(selected_data)
+
+```
+
+```{r}
+
+# Deleting all the duplicating rows
+df_heart <- selected_data[!duplicated(selected_data),]
+```
+
+```{r}
+
+# The dimensions of the cleaned dataset we will use for this analysis
+dim(df_heart)
+
+```
+Then, there are 302 rows and 05 columns in the cleaned dataset (df_heart).
+
+### 3. Exploratory Data Analysis
+
+
+\* Let's summarize the variables using the summary() function.
+```{r}
+# Summarizing the variables
+summary(df_heart)
+
+```
+
+\* Create boxplots of chol across levels of target.
+
+```{r}
+# Create boxplot of cholesterol levels across target levels
+ggplot(df_heart, aes(x = factor(target), y = chol)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Cholesterol Levels by Target",
+       x = "Target (0 = No Heart Disease, 1 = Heart Disease)",
+       y = "Cholesterol Level") +
+  theme_minimal()
+
+
+```
+
+
+
+
+* Bar plot for sex with respect to target
+```{r}
+# Bar plot for sex with respect to target
+ggplot(df_heart, aes(x = factor(sex), fill = factor(target))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Bar Plot of Sex by Target",
+       x = "Sex (0 = Female, 1 = Male)",
+       y = "Count",
+       fill = "Target (0 = No Heart Disease, 1 = Heart Disease)") +
+  theme_minimal()
+
+```
+* Bar plot for cp with respect to target
+```{r}
+# Bar plot for cp with respect to target
+ggplot(df_heart, aes(x = factor(cp), fill = factor(target))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Bar Plot of Chest Pain Type by Target",
+       x = "Chest Pain Type (0-3)",
+       y = "Count",
+       fill = "Target (0 = No Heart Disease, 1 = Heart Disease)") +
+  theme_minimal()
+
+```
+
+
+* What patterns do we observe in the data?
+
+
+1. Cholesterol level and heart diseases: The boxplots of cholesterol across levels of target shows that the cholesterol level between the two statuses seems very close.
+
+
+2. For this population, in the case of females, there are more diseased than non-diseased, whereas in the case of males, there are more non-diseased than diseased.
+
+
+3.The proportion of non-diseased hearts with 0 pain is very high compared to diseased hearts with no pain (which means that the majority of people with 0 pain are non-diseased) and in contrast, the majority of those with at least one pain are diseased.
+
+
+
+### 4. Fitting a Logistic Regression Model
+
+
+
+
+\* Fitting the model to predict target using Age, Sex, cp and chol
+```{r}
+# Logistic regression model
+model <- glm(target ~ age + sex + cp + chol,
+data = df_heart, family = "binomial")
+
+summary(model)
+
+```
+##### Interpretation of coefficients:
+
+
+1. Intercept (4.956253) represents the log-odds of having heart disease when all predictors are zero. In our case, it is not directly interpretable since age and cholesterol cannot be zero.
+
+
+2. Age (-0.063368) indicates that for each additional year of age, the log-odds of having heart disease decrease by approximately 0.0634. This suggests that older peoples are less likely to have heart disease in our model.
+
+
+3. Sex (sex1 = -1.891184) for sex1 (where 1 indicates male) shows that males are less likely to have heart disease compared to females.
+
+
+4. Chest Pain Types: All these coefficients(cp1, cp2, cp3) suggest that higher chest pain types are strongly associated with an increased likelihood of heart disease compared to those without chest pain (cp = 0)
+
+
+### 5. Let's convert the coefficients into odds ratios using exp(coef()).
+
+```{r}
+# Compute odds ratios
+exp(coef(model))
+
+```
+
+\* Interpretations: 
+
+
+\* Sex1 = 0.1508931:  This means that males are about 85% less likely to have heart disease compared to females
+
+
+\* cp1 = 12.6645085: poeple with chest pain type 1 have odds of heart disease that are approximately 12.66 times higher compared to those without chest pain (cp = 0). 
+
+
+\* cp2  = 10.5953589: Similarly, individuals with chest pain type 2 have odds of heart disease that are about 10.60 times higher than those without chest pain.
+
+
+\* cp3 = 9.3680525: For chest pain type 3, the odds of heart disease are approximately 9.37 times higher compared to those without chest pain.
+
+
+\* Chol = 0.9952157:  indicates that for each unit increase in cholesterol level, the odds of having heart disease decrease by about 0.48% (since 1-0.9952157 = 0.00481).
+
+
+### 6. Model Comparison
+
+
+1. Fit a reduced model excluding the chol variable.
+
+```{r}
+# Reduce model
+reduced_model <- glm(target ~ age + sex + cp,
+data = df_heart, family = "binomial")
+
+```
+
+2. Perform a likelihood ratio test between the full and reduced models using anova().
+```{r}
+# Likelihood ratio test
+anova(reduced_model, model, test = "Chisq")
+
+```
+
+* Interpretation:
+- The p-value (P = 0.09524 > 0.05) indicates that adding chol does not significantly improve the model.
+
+
+### 7. Model Predictions and Performance
+
+
+1. Predict probabilities of heart disease for all individuals.
+
+```{r}
+# Predict probabilities
+df_heart$pred_prob <- predict(model, type = "response")
+
+```
+
+2. Convert these probabilities into binary predictions using a threshold of 0.5.
+
+```{r}
+# Convert probabilities to binary predictions
+df_heart$predicted <- ifelse(df_heart$pred_prob > 0.5, 1, 0)
+
+```
+
+3. Create a confusion matrix to evaluate the model’s performance.
+
+```{r}
+# Confusion matrix
+table(Predicted = df_heart$predicted, Actual = df_heart$target)
+
+```
+
+4. Accuracy of the model
+
+```{r}
+# Calculate accuracy
+mean(df_heart$predicted == df_heart$target)
+
+```
+* Answer: 
+- The model correctly classify \( 77.48344% \) of the observations.
+- The are 37 False Positives and 31 False Negatives 
+
+
+
+### 8. ROC Curve and AUC
+
+
+1. Generate an ROC curve and calculate the AUC for the model using
+the pROC package.
+
+* ROC Curves
+```{r}
+# ROC curve
+library(pROC)
+roc_obj <- roc(df_heart$target, df_heart$pred_prob)
+plot(roc_obj, main = "ROC Curve", col = "blue", lwd = 2)
+
+```
+
+* Calculate AUC
+```{r}
+# Calculate AUC
+auc(roc_obj)
+
+```
+
+2. Question: What does the AUC tell you about the model’s performance? Is the model good at distinguishing between individuals with and without heart disease?
+
+
+Answer: The AUC = 0.8517 indicates that our logistic regression model has strong predictive performance in distinguishing between individuals with and without heart disease
+
+
+
+
+
+
+
+
+
+
+
+
+
